@@ -1,0 +1,12 @@
+{
+  "name": "vanguard-loggen",
+  "version": "1.0.0",
+  "description": "A log generator for when Riot Vanguard crashes",
+  "main": "src/index.js",
+  "repository": "https://github.com/fatalerrorcoded/Vanguard-LogGen.git",
+  "author": "Martin Löffler <me@fatalerrorcoded.eu>",
+  "license": "MIT",
+  "dependencies": {
+    "fs-extra": "^9.0.0"
+  }
+}
