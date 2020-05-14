@@ -62,12 +62,27 @@ const saveNetworkInfo = (savepath) => {
     });
 }
 
-const saveLogs = (saveDirectory) => {
+const saveLogGenInfo = async (savepath, powershellInfo) => {
+    let info = "";
+    info += `These logs were automatically generated at ${new Date().toString()}\n`;
+    info += `Generated using https://github.com/fatalerrorcoded/Vanguard-LogGen after a vgc crash was detected`;
+
+    if (powershellInfo) {
+        info += "\n\n";
+        info += "The following info was reported from the Powershell command Get-EventLog\n";
+        info += powershellInfo;
+    }
+
+    await fs.writeFile(savepath, info);
+}
+
+const saveLogs = (saveDirectory, powershellInfo) => {
     console.log(`Saving logs to ${saveDirectory}`);
     return Promise.all([
         saveDxdiag(path.join(saveDirectory, "Riot dxdiag.txt")),
         saveProcesses(path.join(saveDirectory, "Riot Process.txt")),
-        saveNetworkInfo(path.join(saveDirectory, "Riot NetworkInfo.txt"))
+        saveNetworkInfo(path.join(saveDirectory, "Riot NetworkInfo.txt")),
+        saveLogGenInfo(path.join(saveDirectory, "LogGen Info.txt"), powershellInfo)
     ]);
 }
 
