@@ -1,6 +1,12 @@
+// These shouldn't be needed to be changed on your case, but just in case, you can change them here
+const RIOT_CLIENT_LOG_LOCATION = process.env.USERPROFILE + "\\AppData\\Local\\Riot Games\\Riot Client\\Logs";
+const VANGUARD_LOG_LOCATION = "C:\\Program Files\\Riot Vanguard\\Logs";
+
 const { exec } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
+
+const archiver = require('archiver');
 
 let indexSaved = undefined;
 
@@ -71,7 +77,7 @@ const saveLogGenInfo = async (savepath, eventLogIndex) => {
 
     if (eventLogIndex) {
         let powershellInfo = await (() => new Promise((resolve, reject) => {
-            exec(`PowerShell.exe "Get-EventLog -LogName System -Index ${eventLogIndex} | Select-Object Data,EntryType,Message,Source,TimeGenerated"`, (error, stdout, stderr) => {
+            exec(`PowerShell.exe "Get-EventLog -LogName System -Index ${eventLogIndex} | Select-Object *"`, (error, stdout, stderr) => {
                 if (error) {
                     reject(`Exec error: ${error}`);
                     return;
@@ -81,7 +87,7 @@ const saveLogGenInfo = async (savepath, eventLogIndex) => {
         }))();
 
         info += "\n\n";
-        info += "The following info was reported from the event log\n";
+        info += "The following info was reported from the event log";
         info += powershellInfo;
     }
 
@@ -89,14 +95,57 @@ const saveLogGenInfo = async (savepath, eventLogIndex) => {
     console.log("Saved loggen info");
 }
 
+const saveRiotClientLogs = (savepath) => {
+    return new Promise((resolve, reject) => {
+        let output = fs.createWriteStream(savepath);
+        var archive = archiver('zip');
+
+        output.on('close', () => {
+            console.log("Saved Riot Client log archive");
+            resolve();
+        });
+
+        archive.on('error', (err) => {
+            reject(err);
+        });
+
+        archive.pipe(output);
+        archive.directory(RIOT_CLIENT_LOG_LOCATION, "Logs");
+        archive.finalize();
+    });
+}
+
+const saveVanguardLogs = (savepath) => {
+    return new Promise((resolve, reject) => {
+        let output = fs.createWriteStream(savepath);
+        var archive = archiver('zip');
+
+        output.on('close', () => {
+            console.log("Saved Vanguard log archive");
+            resolve();
+        });
+
+        archive.on('error', (err) => {
+            reject(err);
+        });
+
+        archive.pipe(output);
+        archive.directory(VANGUARD_LOG_LOCATION, "Logs");
+        archive.finalize();
+    });
+}
+
 const saveLogs = (saveDirectory, eventLogIndex) => {
     console.log(`Saving logs to ${saveDirectory}`);
     return Promise.all([
-        saveDxdiag(path.join(saveDirectory, "Riot dxdiag.txt")),
-        saveProcesses(path.join(saveDirectory, "Riot Process.txt")),
-        saveNetworkInfo(path.join(saveDirectory, "Riot NetworkInfo.txt")),
+        saveDxdiag(path.join(saveDirectory, "dxdiag.txt")),
+        saveProcesses(path.join(saveDirectory, "Process.txt")),
+        saveNetworkInfo(path.join(saveDirectory, "NetworkInfo.txt")),
+
+        saveRiotClientLogs(path.join(saveDirectory, "Riot Client Logs.zip")),
+        saveVanguardLogs(path.join(saveDirectory, "Vanguard Logs.zip")),
         saveLogGenInfo(path.join(saveDirectory, "LogGen Info.txt"), eventLogIndex)
-    ]);
+    ]).then(() => console.log("All logs saved"));
 }
 
 if (process.argv[2] !== undefined) {
@@ -132,5 +181,10 @@ if (process.argv[2] !== undefined) {
     }
 } else {
     const logSpecificFolder = path.join(logFolder, "manual");
-    fs.mkdir(logSpecificFolder).then(() => saveLogs(logSpecificFolder, undefined));
+    if (fs.existsSync(logSpecificFolder)) {
+        console.log("logs/manual exists, move or delete it before generating new logs");
+    } else {
+        console.log("Note: Do not Ctrl+C during log generation, the application will notify you when done (dxdiag takes quite a bit of time to finish)");
+        fs.mkdir(logSpecificFolder).then(() => saveLogs(logSpecificFolder, undefined));
+    }
 }
